@@ -40,6 +40,7 @@ function getCatalogo($db, $request) {
 
 // Actualiza los precios
 function postCatalogo($db, $request) {
+    
     return $db->query("select * from productos
     left join catalogo on productos.productocod = catalogo.productocod
     where proveedorcod is null or proveedorcod = ". $request->idUsuario);
