@@ -19,13 +19,9 @@ if ($requestType == "GET" || !is_null($peticion) ) {
         case 'POST':
             $usuarios = getUsers($db, $peticion);
             if (count($usuarios) > 0) {
-                $response->mensaje = "Hola ".$usuarios[0]["nombre"].", has iniciado sesion con exito!";
-                $response->user->usercod = $usuarios[0]["usercod"];
-                $response->user->username = $usuarios[0]["nombre"];
-                $response->user->authorities = [[
-                    'authority' => $usuarios[0]["rol"]
-                ]];
-                $response->token = "eyJhbGciOiJIUzUxMiJ9";
+                $response->mensaje = "Usuario ya existe";
+            } else {
+                $response->mensaje = addUser($peticion) ? "Registrado" : "Error";
             }
             break;
 
@@ -39,6 +35,17 @@ echo json_encode($response,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 
 // Obtiene los usuarios
 function getUsers($db, $peticion) {
-    
     return $db->query("select * from usuarios where usuario ='".$peticion->username."'");
+}
+
+function addUser($peticion) {
+    $db = new DBDriver(PDOConfig::getInstance());
+    $query = "insert into usuarios (usuario, nombre, rol, correo) values (?, ?, ?, ?)";
+    $data = [$peticion->username, $peticion->username, $peticion->rol, $peticion->correo];
+    $resultado = $db->set($query, $data);
+
+    error_log(print_r($resultado, true));
+    error_log($db->getLastId());
+
+    return $db->getLastId() == '-1' ? false : true;
 }
