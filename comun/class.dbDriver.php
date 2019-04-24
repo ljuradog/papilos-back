@@ -85,15 +85,14 @@ class DBDriver{
         }
         return $fetch;
     }
-    public function set($query,$exec){
+    public function set($query,$exec,$seqName = ''){
         $stmt1 = $this->pdo->prepare($query);
-        error_log(print_r($query, true));
         try {
             $this->pdo->beginTransaction();
             $stmt1->execute($exec);
             if ($stmt1) {
                 $fetch = $stmt1->fetchAll($this->config->getAssoc());
-                $this->last_id = $this->pdo->lastInsertId();
+                $this->last_id = $this->pdo->lastInsertId($seqName);
             } else {
                 $this->pdo->rollBack();
                 $this->last_id = -1;

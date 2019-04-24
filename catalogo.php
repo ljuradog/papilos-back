@@ -14,15 +14,22 @@ $response = new stdClass;
 $requestType = $_SERVER['REQUEST_METHOD'];
 $request = file_get_contents('php://input');
 $peticion = json_decode($request);
-error_log(print_r($peticion, true));
+error_log("Peticion ". print_r($peticion, true));
 
 if ($requestType == "GET" || !is_null($peticion) ) {
     switch ($requestType) {
         case 'GET':
-            $response->productos = getCatalogo($db, $peticion);
+            $idUsuario = filter_input(INPUT_GET, 'idUsuario', FILTER_SANITIZE_URL);
+            if (is_null($idUsuario)) {
+                $response->productos = getCatalogoCotizaciones($db, $idUsuario);
+            } else {
+                $response->productos = getCatalogo($db, $idUsuario);    
+            }
+
             break;
         case 'POST':
-            $response->productos = postCatalogo($db, $peticion);
+            actualizarCatalogo($db, $peticion);
+            $response->resultado = 'OK';
             break;
         
     }
@@ -31,17 +38,25 @@ if ($requestType == "GET" || !is_null($peticion) ) {
 //RESPUESTA
 echo json_encode($response,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 
-// Obtiene los usuarios
-function getCatalogo($db, $request) {
-    return $db->query("select * from productos
-    left join catalogo on productos.productocod = catalogo.productocod
-    where proveedorcod is null or proveedorcod = ". $request->idUsuario);
+// Obtiene los productos con precios para proveedores
+function getCatalogo($db, $idUsuario) {
+    return $db->query("select productos.*, catalogo.preciounitario from productos
+    left join catalogo on productos.productocod = catalogo.productocod and (proveedorcod is null or proveedorcod = ". $idUsuario .")");
+}
+
+// Obtiene los productos
+function getCatalogoCotizaciones($db, $idUsuario) {
+    return $db->query("select * from productos");
 }
 
 // Actualiza los precios
-function postCatalogo($db, $request) {
-    
-    return $db->query("select * from productos
-    left join catalogo on productos.productocod = catalogo.productocod
-    where proveedorcod is null or proveedorcod = ". $request->idUsuario);
+function actualizarCatalogo($db, $request) {
+    $idCatalogo = $db->set("select catalogocod from catalogo where proveedorcod = ? and productocod = ?;", [$request->idUsuario, $request->idProducto]);
+    if (count($idCatalogo) > 0) {
+        // Actualizo
+        $db->set("update catalogo set preciounitario = ? where proveedorcod = ? and productocod = ?;", [$request->precio, $request->idUsuario, $request->idProducto]);
+    } else {
+        // Creo
+        $db->set("insert into catalogo (preciounitario, proveedorcod, productocod) values(?, ?, ?);", [$request->precio, $request->idUsuario, $request->idProducto]);
+    }
 }
